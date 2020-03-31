@@ -74,12 +74,25 @@ def populate_data(date_ux,two_months_ux,stock_price,op_chain): #TODO: remove sto
                     op_chain.add_exp_date(newest)
         date_ux+=86400
 
+def normalize_cmap(TCKR):
+    minvals=[]
+    maxvals=[]
+    lengths=[]
+    for lists in TCKR.exp_dates:
+        minvals.append(min(lists.strike_list))
+        maxvals.append(max(lists.strike_list))
+    minval =min(minvals)
+    maxval =max(maxvals)
+    norm = mpl.colors.Normalize(vmin=minval,vmax=maxval)
+    return norm
+
+
 #TODO:add a menu to get stock tickers
 #get stock ticker
 tickers = ['SPY']
 
 #get current stock price right now TODO:remove me when scraping function for stock is good to go.
-stock_price = 261
+stock_price = 262
 
 #master list of option chains for tickers
 MASTER = []
@@ -94,51 +107,45 @@ for TCKR in MASTER:
     #populate chain data
     populate_data(date_ux,two_months_ux,stock_price,TCKR)    
 
-
-##TODO: loop through plots
-SPY = MASTER[0]
-#begin plot stuff
+print('Generating Plots')
 plt.style.use('dark_background')
-fig=plt.figure()
-ax=plt.axes()#(projection='3d')
-n=0
-x_tics=[]
-xaxis_label=[]
 
-minvals=[]
-maxvals=[]
-lengths=[]
-for lists in SPY.exp_dates:
-    minvals.append(min(lists.strike_list))
-    maxvals.append(max(lists.strike_list))
-minval =min(minvals)
-maxval =max(maxvals)
-norm = mpl.colors.Normalize(vmin=minval,vmax=maxval)
+#loop through tickers, generate plots
+fig = []
+for TCKR in MASTER:
+    fig.append(plt.figure())
+    ax=plt.axes()
+    n=0
+    x_tics=[]
+    xaxis_label=[]
+    norm = normalize_cmap(TCKR)
 
-for dates in SPY.exp_dates:
-    premiums = [i*100 for i in dates.premium_list]
-    im = ax.scatter(n*np.ones(len(premiums)),premiums,c=dates.strike_list,norm=norm ,cmap=cm.rainbow_r)
-    xaxis_label.append(dates.date)
-    x_tics.append(n)
-    n+=1
+    for dates in TCKR.exp_dates:
+        premiums = [i*100 for i in dates.premium_list]
+        im = ax.scatter(n*np.ones(len(premiums)),premiums,c=dates.strike_list,norm=norm ,cmap=cm.rainbow_r)
+        xaxis_label.append(dates.date)
+        x_tics.append(n)
+        n+=1
 
-#dates for x axis
-ax.xaxis.set_ticks(x_tics)
-ax.xaxis.set_ticklabels(xaxis_label)
-plt.xticks(rotation=45)
+    #dates for x axis
+    ax.xaxis.set_ticks(x_tics)
+    ax.xaxis.set_ticklabels(xaxis_label)
+    plt.xticks(rotation=45)
 
-#ylabel
-plt.ylabel('% Premium')
+    #ylabel
+    plt.ylabel('% Premium')
 
-#colorbar
-cbar = fig.colorbar(im,ax=ax,orientation ='horizontal',pad=0.2)
-new = cbar.get_ticks()
-new_labels = [f'{(1*(100-(i/stock_price*100))):.2f}' +'% / $' + f'{(i):.2f}' for i in new]
-cbar.ax.set_xticklabels(new_labels)
-cbar.ax.set_xlabel('% Out Of Money / Strike')
+    #colorbar
+    cbar = plt.colorbar(im,ax=ax,orientation ='horizontal',pad=0.2)
+    new = cbar.get_ticks()
+    new_labels = [f'{(1*(100-(i/stock_price*100))):.2f}' +'% / $' + f'{(i):.2f}' for i in new]
+    cbar.ax.set_xticklabels(new_labels)
+    cbar.ax.set_xlabel('% Out Of Money / Strike')
 
-#grid
-plt.grid(True,linewidth='.5',linestyle='--',color='lightgray')
+    #grid
+    plt.grid(True,linewidth='.5',linestyle='--',color='lightgray')
+    
+    #title
+    plt.title(TCKR.name+ ' Option Chain',fontsize = 15)
 
-plt.title(SPY.name+ ' Option Chain',fontsize = 15)
 plt.show()
