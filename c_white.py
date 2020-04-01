@@ -36,19 +36,17 @@ class stock_op_chain():
         self.exp_dates.append(new_date)
     def add_stock_price(self,stock_price):
         self.stock_price = stock_price
-        
+
 def get_options(response,stock_price,date_str):
     soup = bs(response.text, "lxml")
     table = soup.find('table',{'class':'puts'})    
     if table == None:
         print('No data')
         return None
-
-    if 'class' not in table.attrs:
+    elif 'class' not in table.attrs:
         print('No data')
-        return None   
-        
-    if table.attrs['class'][0] !='puts':
+        return None
+    elif table.attrs['class'][0]!='puts':
         print('No data')
         return None
 
@@ -100,13 +98,14 @@ def normalize_cmap(TCKR):
     maxvals=[]
     lengths=[]
     for lists in TCKR.exp_dates:
-        minvals.append(min(lists.strike_list))
-        maxvals.append(max(lists.strike_list))
+        if lists.strike_list !=[]:
+            minvals.append(min(lists.strike_list))
+        if lists.strike_list !=[]:
+            maxvals.append(max(lists.strike_list))
     minval =min(minvals)
     maxval =max(maxvals)
     norm = mpl.colors.Normalize(vmin=minval,vmax=maxval)
     return norm
-
 
 #TODO:add a menu to get stock tickers
 #get stock ticker
