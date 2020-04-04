@@ -21,10 +21,12 @@ class exp_date():
         self.strike_list = []
         self.bid_list = []
         self.premium_list = []
-    def add_vals(self,strike,bid,premium):
+        self.otm_list = []
+    def add_vals(self,strike,bid,premium,stock_price):
         self.strike_list.append(strike)
         self.bid_list.append(bid)
         self.premium_list.append(premium)
+        self.otm_list.append(strike/stock_price * 100)
 
 class stock_op_chain():
     def __init__(self,name):
@@ -61,7 +63,7 @@ def get_options(response,stock_price,date_str):
                 bid = 0
             else:
                 bid = float(bid)
-            new_date.add_vals(strike,bid,(bid/strike))
+            new_date.add_vals(strike,bid,(bid/strike),stock_price)
     print('Success')    
     return new_date
 
@@ -76,7 +78,8 @@ def populate_data(two_months_ux,op_chain): #can probably get rid of date ux
     response = requests.get(url,headers={'user-agent':'Mozilla/5.0'})    
     soup = bs(response.text, "lxml")
     script = soup.find('script',text=re.compile('root.App.main')).text
-    data = loads(re.search("root.App.main\s+=\s+(\{.*\})", script).group(1))    
+    data = loads(re.search("root.App.main\s+=\s+(\{.*\})", script).group(1))
+    #TODO: CODE FAILED HERE ON 'regularmarketprice' ONCE...ADD ERROR HADNLING FOR KEYS?
     stock_str = data['context']['dispatcher']['stores']['QuoteSummaryStore']['price']['regularMarketPrice']['fmt']
     op_chain.add_stock_price(float(stock_str.replace(',','')))
     date_ux = data['context']['dispatcher']['stores']['OptionContractsStore']['meta']['expirationDates']
@@ -107,27 +110,42 @@ def normalize_cmap(TCKR):
     norm = mpl.colors.Normalize(vmin=minval,vmax=maxval)
     return norm
 
+def get_date_matches(MASTER):
+    lengths=[]
+    for TCKR in MASTER:
+        lengths.append(len(TCKR.exp_dates))
+    a = lengths.index(min(lengths))
+    dates_to_plot = []
+    for i in MASTER[a].exp_dates:
+        dates_to_plot.append(i.date)
+    return dates_to_plot
+
+
 #TODO:add a menu to get stock tickers
 #get stock ticker
-tickers = input("Input tickers as comma separated list (ie: SPY,GOOG,TSLA): ")
+print(' \n \n \n \n \n')
+#TODO: remove spaces from input string.
+tickers = input("Input tickers as comma separated list, ex: SPY,GOOG,TSLA \n Tickers: ")
 tickers = tickers.split(',')
-#master list of option chains for tickers
-MASTER = []
+tickers = [ticker.replace(' ','') for ticker in tickers]
 
+MASTER = []
+#make a class for all tickers
 for ticker in tickers:
     #set stock class per ticker
     MASTER.append(stock_op_chain(ticker))
 
 #get dates
 two_months_ux = get_date()
+
+#populate option chains for the next 2 months
 for TCKR in MASTER:
     #populate chain data
     populate_data(two_months_ux,TCKR)    
 
+#plot those option chains
 print('Generating Plots')
 plt.style.use('dark_background')
-
-#loop through tickers, generate plots
 fig = []
 for TCKR in MASTER:
     fig.append(plt.figure())
@@ -165,4 +183,29 @@ for TCKR in MASTER:
     #title
     plt.title(TCKR.name+ ' Option Chain',fontsize = 15)
 
+#display plots  #TODO:to be moved to end of loop
+#plt.show()
+
+#get dates to plot matches for lowest common
+dates_to_plot = get_date_matches(MASTER)
+
+n_rows = np.ceil(len(dates_to_plot)/3)
+sbplt=1
+fig.append(plt.figure())
+for date in dates_to_plot:        #create a subplot number
+    ax = plt.subplot(n_rows,3,sbplt) #this will be the figure with all the subplots
+    for i in MASTER:
+        for j in i.exp_dates:
+            if j.date == date:
+                premiums = [i*100 for i in j.premium_list]
+                ax.plot(j.otm_list,premiums,label=i.name)
+                #add to plot to that subplot, make sure to add label for that plot
+    legend = ax.legend()
+    plt.grid(True,linewidth='.5',linestyle='--',color='lightgray')
+    plt.ylabel('% Premium')
+    plt.xlabel('% Out The Money')
+    ax.set_title(date)
+    sbplt+=1
+
 plt.show()
+print('Done')
