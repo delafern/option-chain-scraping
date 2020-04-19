@@ -12,4 +12,4 @@ Plot of all tickers, out of money vs premium for strike dates.
 ![Master Graph](https://github.com/fernancode/option-chain-scraping/blob/master/screencap4.JPG)
 
 Plot of Premium vs Out of Money for a Particular Stock
-![Plot of Premium vs Out of Money](https://github.com/fernancode/option-chain-scraping/blob/master/screencap4.JPG)
+![Plot of Premium vs Out of Money](https://github.com/fernancode/option-chain-scraping/blob/master/screencap3.JPG)
